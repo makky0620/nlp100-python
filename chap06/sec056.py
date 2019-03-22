@@ -12,44 +12,33 @@ remention2mention = {}
 sentences = root.findall("document/sentences/sentence")
 coreferences = root.findall("document/coreference/")
 
+sentences = [[t.find('word').text for t in s.findall('tokens/*')]
+            for s in root.find('document/sentences')]
+
+coreferences = [
+    [
+        [
+            int(mention.find('sentence').text)-1,
+            int(mention.find('start').text)-1, 
+            mention.find('text').text.split(' ')
+        ] 
+        for mention in coreference.findall('mention')]
+    for coreference in root.findall('document/coreference/*')]
 
 for coreference in coreferences:
-    key = ""
-    value = ""
-    for mention in coreference:
-        if mention.get("representative"):
-            key = mention.find("text").text
-        else:
-            value = mention.find("text").text
-            sentence_id = mention.find("sentence").text
-            start_end = [int(mention.find("start").text),
-                         int(mention.find("head").text),
-                         mention.find("text").text
-                         ]
-            if sentence_id in position_map:
-                position_map[sentence_id].append(start_end)
-            else:
-                position_map[sentence_id] = start_end
+    for mention in coreference[1:]:
+        text = [ 
+            sentences[mention[0]][:mention[1]] +
+            coreference[0][2] + 
+            ["("] + mention[2] + [")"] +
+            sentences[mention[0]][mention[1]+len(mention[2]):]
+            ]
+        for word in text:
+            print(" ".join(word))
 
-    remention2mention[key] = value
 
-pprint(remention2mention)
 
-for key in position_map.keys():
-    for sentence in sentences:
-        tokens = sentence.find("tokens")
-        if sentence.get("id") == key:
-            words = [token.find("word").text for token in tokens]
-            origin_words = words[position_map[key][0]:position_map[key][1]]
-            del words[position_map[key][0]:position_map[key][1]]
-            pprint(words)
-            words.insert(position_map[key][0],
-                         "{}({})".format(remention2mention[position_map[key][2]], position_map[key][2]))
-            # print(" ".join([tokens[i].find("word").text
-            #                 for i in range(position_map[key][0]-1, position_map[key][1])]))
-        else:
-            pass
-            # print(" ".join([token.find("word").text for token in tokens]))
+
 
 """
     25
